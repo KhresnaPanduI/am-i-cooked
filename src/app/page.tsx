@@ -1,65 +1,135 @@
-import Image from "next/image";
+"use client";
+
+import { useState, useCallback } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import LandingHero from "@/components/LandingHero";
+import JobInput from "@/components/JobInput";
+import FateCounter from "@/components/FateCounter";
+import LoadingScreen from "@/components/LoadingScreen";
+import ScoreGauge from "@/components/ScoreGauge";
+import VerdictBanner from "@/components/VerdictBanner";
+import BreakdownSection from "@/components/BreakdownSection";
+import LastStand from "@/components/LastStand";
+import SurvivalTips from "@/components/SurvivalTips";
+import ShareButtons from "@/components/ShareButtons";
+import { CookedResult, AnalyzeResponse, AnalyzeErrorResponse } from "@/lib/types";
+import { RotateCcw } from "lucide-react";
 
 export default function Home() {
+  const [isLoading, setIsLoading] = useState(false);
+  const [result, setResult] = useState<CookedResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = useCallback(async (description: string) => {
+    setIsLoading(true);
+    setError(null);
+    setResult(null);
+
+    try {
+      const res = await fetch("/api/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jobDescription: description }),
+      });
+
+      const data: AnalyzeResponse | AnalyzeErrorResponse = await res.json();
+
+      if (!data.success) {
+        setError(data.error);
+        return;
+      }
+
+      setResult(data.data);
+
+      // Update URL for shareability
+      const url = new URL(window.location.href);
+      url.searchParams.set("s", String(data.data.score));
+      window.history.replaceState({}, "", url.toString());
+    } catch {
+      setError("Something went wrong. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const handleReset = useCallback(() => {
+    setResult(null);
+    setError(null);
+    // Clean up URL
+    const url = new URL(window.location.href);
+    url.searchParams.delete("s");
+    window.history.replaceState({}, "", url.toString());
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, []);
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <main className="flex min-h-screen flex-col items-center px-4 py-12 sm:px-6 sm:py-16">
+      <div className="w-full max-w-[680px]">
+        {/* Landing section */}
+        <div className="flex flex-col items-center gap-8">
+          <LandingHero />
+          <JobInput onSubmit={handleSubmit} isLoading={isLoading} />
+          <FateCounter />
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+
+        {/* Error message */}
+        <AnimatePresence>
+          {error && (
+            <motion.div
+              className="mt-6 rounded-xl bg-cooked/10 px-5 py-3 text-center text-sm text-cooked"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+            >
+              {error}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Loading */}
+        <AnimatePresence>{isLoading && <LoadingScreen />}</AnimatePresence>
+
+        {/* Results */}
+        <AnimatePresence>
+          {result && (
+            <motion.div
+              className="mt-12 flex flex-col items-center gap-8"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              <ScoreGauge score={result.score} />
+              <VerdictBanner verdict={result.verdict} />
+              <BreakdownSection breakdown={result.breakdown} />
+              <LastStand text={result.lastStand} />
+              <SurvivalTips tips={result.survivalTips} />
+              <ShareButtons result={result} />
+
+              {/* Try again */}
+              <motion.button
+                onClick={handleReset}
+                className="flex items-center gap-2 rounded-full border border-card-border px-6 py-2.5 text-sm font-medium text-muted transition-all hover:bg-foreground/5"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 6 }}
+              >
+                <RotateCcw className="h-4 w-4" />
+                Try Another Job
+              </motion.button>
+
+              {/* Footer */}
+              <motion.p
+                className="pb-8 text-xs text-muted/50"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 6.2 }}
+              >
+                For entertainment purposes only. Your job is probably fine. Probably.
+              </motion.p>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </main>
   );
 }
