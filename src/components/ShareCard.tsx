@@ -17,9 +17,6 @@ const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(
       <div
         ref={ref}
         style={{
-          position: "fixed",
-          left: "-9999px",
-          top: "-9999px",
           width: "600px",
           height: "800px",
           padding: "48px",
@@ -28,6 +25,8 @@ const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(
           display: "flex",
           flexDirection: "column",
           gap: "24px",
+          borderRadius: "24px",
+          border: "1px solid #F3E8D9",
         }}
       >
         {/* Header */}
