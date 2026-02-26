@@ -80,17 +80,28 @@ export default function ShareButtons({ result, delay = 5.5 }: ShareButtonsProps)
         Share Your Results
       </h2>
 
-      {/* Visible share card preview — scaled down for display, full size for capture */}
-      <div className="mb-6 flex justify-center">
+      {/* Visible share card preview — scaled down for display */}
+      <div className="mb-6 flex justify-center overflow-hidden">
         <div
           className="origin-top"
           style={{
             transform: "scale(0.55)",
-            marginBottom: "-360px", /* compensate for scaled height so no gap */
+            marginBottom: "-360px",
           }}
         >
-          <ShareCard ref={cardRef} result={result} />
+          <ShareCard result={result} />
         </div>
+      </div>
+
+      {/* Hidden full-size card for html-to-image capture (no CSS transform) */}
+      <div
+        style={{
+          position: "fixed",
+          left: "-9999px",
+          top: "0px",
+        }}
+      >
+        <ShareCard ref={cardRef} result={result} />
       </div>
 
       <div className="flex flex-wrap justify-center gap-2.5">

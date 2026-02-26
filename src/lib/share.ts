@@ -43,13 +43,29 @@ export async function downloadShareCard(
   element: HTMLElement,
   score: number
 ): Promise<void> {
-  const { toPng } = await import("html-to-image");
-  const dataUrl = await toPng(element, {
+  const { toBlob } = await import("html-to-image");
+
+  // html-to-image on Firefox often needs a "warm-up" call
+  // because the first render can fail to load fonts/styles
+  try {
+    await toBlob(element, { quality: 0.95, pixelRatio: 2 });
+  } catch {
+    // warm-up call — ignore errors
+  }
+
+  const blob = await toBlob(element, {
     quality: 0.95,
     pixelRatio: 2,
   });
+
+  if (!blob) throw new Error("Failed to generate image");
+
+  const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.download = `am-i-cooked-${score}.png`;
-  link.href = dataUrl;
+  link.href = url;
+  document.body.appendChild(link);
   link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 }
