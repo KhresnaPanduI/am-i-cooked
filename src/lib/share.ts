@@ -39,33 +39,42 @@ export async function shareNative(
   }
 }
 
-export async function downloadShareCard(
-  element: HTMLElement,
-  score: number
-): Promise<void> {
-  const { toBlob } = await import("html-to-image");
-
-  // html-to-image on Firefox often needs a "warm-up" call
-  // because the first render can fail to load fonts/styles
+/**
+ * Pre-generate the share card blob.
+ * Called eagerly on mount so the blob is ready when user clicks download.
+ */
+export async function generateShareCardBlob(
+  element: HTMLElement
+): Promise<string | null> {
   try {
-    await toBlob(element, { quality: 0.95, pixelRatio: 2 });
-  } catch {
-    // warm-up call — ignore errors
+    const { toBlob } = await import("html-to-image");
+
+    // Warm-up call for Firefox (first render often fails to load fonts/styles)
+    try {
+      await toBlob(element, { quality: 0.95, pixelRatio: 2 });
+    } catch {
+      // ignore warm-up errors
+    }
+
+    const blob = await toBlob(element, { quality: 0.95, pixelRatio: 2 });
+    if (!blob) return null;
+
+    return URL.createObjectURL(blob);
+  } catch (err) {
+    console.error("Failed to generate share card blob:", err);
+    return null;
   }
+}
 
-  const blob = await toBlob(element, {
-    quality: 0.95,
-    pixelRatio: 2,
-  });
-
-  if (!blob) throw new Error("Failed to generate image");
-
-  const url = URL.createObjectURL(blob);
+/**
+ * Trigger download from a pre-generated object URL.
+ * This is SYNCHRONOUS — no async work — so Firefox preserves the user gesture.
+ */
+export function triggerDownload(objectUrl: string, filename: string): void {
   const link = document.createElement("a");
-  link.download = `am-i-cooked-${score}.png`;
-  link.href = url;
+  link.download = filename;
+  link.href = objectUrl;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
-  URL.revokeObjectURL(url);
 }
